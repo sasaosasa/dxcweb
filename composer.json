@@ -1,0 +1,23 @@
+{
+  "name": "dxcweb/tool",
+  "type": "library",
+  "description": "laravel的工具类",
+  "keywords": [],
+  "support": {
+    "issues": "https://github.com/sasaosasa"
+  },
+  "authors": [
+    {
+      "name": "dxcweb",
+      "email": "605863278@qq.com"
+    }
+  ],
+  "autoload": {
+        "psr-4": {
+            "Tool\\": ""
+        },
+        "files":[
+        	"Util.php"
+        ]
+    }
+}
