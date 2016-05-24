@@ -206,13 +206,13 @@ class Model
                 if ($this->is_exists_primary_key($val)) {
                     $new_data = $this->assemblyUpdateData($val);
                     $new_data_arr[] = $new_data;
-
                     //初始化插入更新
                     $this->initUpdateData($new_data);
                 } else {
                     //初始化插入数据
                     $new_data = $this->assemblyInsertData($val);
-                    $this->initInsertData($new_data);
+                    if (!empty($new_data))
+                        $this->initInsertData($new_data);
                 }
             }
             //初始化要删除的数据
@@ -227,6 +227,7 @@ class Model
                 if (empty($this->db_data)) {
                     //组织数据,过滤不需要的字段
                     $new_data = $this->assemblyInsertData($original_data);
+
                     $this->initInsertData($new_data);
                 } else {
                     //组织数据,过滤不需要的字段
@@ -260,7 +261,7 @@ class Model
                     $data['created_at'] = _now();
                 }
                 if ($this->is_create_id) {
-                    $data['create_id'] = _userID();
+                    $data['create_id'] = _erpUserInfo()['emp_id'];
                 }
 
                 if (!empty($this->foreign_key_val)) {
@@ -497,7 +498,6 @@ class Model
      */
     private function assemblyInsertData($original_data)
     {
-
         $new_data = [];
         foreach ($this->fields as $val) {
             if (isset($original_data[$val]) && $original_data[$val] !== '')
