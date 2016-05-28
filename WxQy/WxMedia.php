@@ -21,41 +21,34 @@ class WxMedia extends WxExecute
         $uri = "https://api.weixin.qq.com/cgi-bin/media/get?access_token=ACCESS_TOKEN&media_id=$media_id";
         $url = $this->getRequestUrl($uri, $reload);
         $data = $this->getImage($url);
-        if ($data['success']) {
+        if ($data['result']) {
             return $data;
         } else {
-            $check_data = $this->checkData($data['res']);
+            $check_data = $this->checkData($data['data']);
             if ($reload) {
                 //重发
-                if ($this->isInvalidAccessToken($check_data['error_code'])) {
+                if ($this->isInvalidAccessToken($check_data['errorcode'])) {
                     //无效AccessToken重发
                     $content = "重发后ACCESS_TOKE一样失败！";
                 } else {
                     $content = "重发后失败！";
                 }
-                log_file("error/wx/media_download_img", "素材下载图片", $data, $check_data['res'], $uri, $content);
+                log_file("error/wx/media_download_img", "素材下载图片", $data, $check_data['data'], $uri, $content);
                 return $check_data;
             } else {
-                if ($this->isInvalidAccessToken($check_data['error_code'])) {
+                if ($this->isInvalidAccessToken($check_data['errorcode'])) {
                     return $this->downloadImg($media_id, true);
                 } else {
                     //有错误！
-                    log_file("error/wx/media_download_img", "素材下载图片", $data, $check_data['res'], $uri, "失败！");
+                    log_file("error/wx/media_download_img", "素材下载图片", $data, $check_data['data'], $uri, "失败！");
                     return $check_data;
                 }
             }
         }
     }
 
-    private function getImage($url, $path = null)
+    private function getImage($url, $path = "./php/storage/wxCache/qy/img/")
     {
-        if (empty($path)) {
-            $log_file_path = config('myapp.log_file_path');
-            if (empty($log_file_path)) {
-                _pack("找不到log_file_path配置文件", false);
-            }
-            $path = $log_file_path . 'wxCache/qy/img/';
-        }
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);//设置URL
         curl_setopt($ch, CURLOPT_POST, 1);//post
@@ -69,7 +62,7 @@ class WxMedia extends WxExecute
         $response = curl_exec($ch);
 
         if (!$response) {
-            _pack(curl_error($ch), false);
+            return _output(curl_error($ch), false);
         }
         if (curl_getinfo($ch, CURLINFO_HTTP_CODE) == '200') {
             $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
@@ -77,16 +70,11 @@ class WxMedia extends WxExecute
             $body = substr($response, $headerSize);
         } else {
             //错误
-            _pack($response, false);
-            exit;
+            return _output($response, false);
         }
 
         $content_type = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
         $path .= date("Y-m-d") . '/';
-        $return = [
-            "success" => false,
-            "res" => $body,
-        ];
         switch ($content_type) {
             case "image/jpeg":
                 $path .= create_guid() . '.jpg';
@@ -95,16 +83,13 @@ class WxMedia extends WxExecute
                 $path .= create_guid() . '.png';
                 break;
             default:
-                $return['res'] = $body;
-                return $return;
+                return _output($body, false);
         }
         mkDirs(dirname($path));
         curl_close($ch);//关闭
         $fp = @fopen($path, 'a');
         fwrite($fp, $body);
         fclose($fp);
-        $return['success'] = true;
-        $return['res'] = $path;
-        return $return;
+        return _output($path);
     }
 }

@@ -79,33 +79,6 @@ class WxBasic
         return $str;
     }
 
-    /**
-     *    作用：生成签名
-     */
-    public function getSign($arr)
-    {
-        $key = config("myapp.pay_key");
-        if (empty($key)) {
-            _pack("未设置支付密钥！", false);
-        }
-        foreach ($arr as $k => $v) {
-            $Parameters[$k] = $v;
-        }
-        //签名步骤一：按字典序排序参数
-        ksort($Parameters);
-        $String = $this->formatBizQueryParaMap($Parameters, false);
-        //echo '【string1】'.$String.'</br>';
-        //签名步骤二：在string后加入KEY
-        $String = $String . "&key=" . $key;
-        //echo "【string2】".$String."</br>";
-        //签名步骤三：MD5加密
-        $String = md5($String);
-        //echo "【string3】 ".$String."</br>";
-        //签名步骤四：所有字符转为大写
-        $result_ = strtoupper($String);
-        //echo "【result】 ".$result_."</br>";
-        return $result_;
-    }
 
     /*
     * 	作用：格式化参数，签名过程需要使用
@@ -176,13 +149,16 @@ class WxBasic
         return true;
     }
 
-    public function payCurl($xml, $url, $second = 30)
+    public function payCurl($xml, $url, $apiclient_cert_config = null, $apiclient_key_config = null)
     {
-        $apiclient_cert_config = config("myapp.apiclient_cert");
-        $apiclient_key_config = config("myapp.apiclient_key");
+        if (empty($apiclient_cert_config) || empty($apiclient_key_config)) {
+            $apiclient_cert_config = config("myapp.apiclient_cert");
+            $apiclient_key_config = config("myapp.apiclient_key");
+        }
         if (empty($apiclient_cert_config) || empty($apiclient_key_config)) {
             _pack("缺少支付证书配置文件", false);
         }
+
         $apiclient_cert_path = base_path($apiclient_cert_config);
         $apiclient_key_path = base_path($apiclient_key_config);
         if (!is_file($apiclient_cert_path) || !is_file($apiclient_key_path)) {
@@ -190,7 +166,7 @@ class WxBasic
         }
         $ch = curl_init();
         //设置超时
-        curl_setopt($ch, CURLOPT_TIMEOUT, $second);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
 
         //如果有配置代理这里就设置代理
 

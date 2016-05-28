@@ -391,9 +391,6 @@ function mkDirs($dir)
  */
 function stringLengthCheck($str, $len)
 {
-    if (!isset($str) || $str == '') {
-        return false;
-    }
     if (!is_string($str)) {
         return false;
     }
