@@ -48,6 +48,28 @@ class Http
         return _output($return["response"]);
     }
 
+    public static function rsaPost($key, $url, $params = [], $connection = 'default', $error_notice = true)
+    {
+        $password = config("private_key.$connection.password");
+        $private_key = config("private_key.$connection.key");
+        if (empty($password) || empty($private_key)) {
+            return _output("缺少配置private_key", false, 7);
+        }
+        $rsa = new RSA();
+        $rsa->setPassword($password);
+        $rsa->loadKey($private_key);
+        $http_params = [];
+        $http_params['key'] = $key;
+        $http_params['timeStamp'] = _now();
+        $http_params['randStr'] = create_guid();
+        $http_params['data'] = json_encode_cn($params);
+        $http_params['sign'] = base64_encode($rsa->sign(md5($http_params['data']) . $http_params['timeStamp'] . $http_params['randStr']));
+        if (empty($http_params['sign'])) {
+            return _output("生成签名错误,请检测私钥密码是否正确！", false);
+        }
+        return self::post($url, $http_params, [], $error_notice);
+    }
+    
     public static function post($url, $params = [], $files = [], $headers = [], $error_notice = true)
     {
         if (!$files) {
