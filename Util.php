@@ -196,6 +196,42 @@ function data_filters($data)
     return $data;
 }
 
+function _getUserInfo()
+{
+    $user_info_key = _getUserInfoKey();
+    return \Illuminate\Support\Facades\Redis::get($user_info_key);
+}
+
+
+
+function _setUserInfo($user_id, $user_info)
+{
+    $user_info_key = _getUserInfoKey();
+    $session_id_key = _getSessionIdKey($user_id);
+    \Illuminate\Support\Facades\Redis::setex($user_info_key, 86400, json_encode($user_info));
+    \Illuminate\Support\Facades\Redis::setex($session_id_key, 86400, $user_id);
+}
+
+function _getUserInfoKey()
+{
+    $session_prefix = config('myapp.session_prefix');
+    $session_id = \Illuminate\Support\Facades\Session::getId();
+    return md5($session_prefix . '_' . $session_id . '_user_info');
+}
+
+function _getUserIdKey()
+{
+    $session_prefix = config('myapp.session_prefix');
+    $session_id = \Illuminate\Support\Facades\Session::getId();
+    return md5($session_prefix . '_' . $session_id . '_user_id');
+}
+
+function _getSessionIdKey($user_id)
+{
+    $session_prefix = config('myapp.session_prefix');
+    return md5($session_prefix . '_' . $user_id . '_user_id');
+}
+
 function _userInfo($arr = null)
 {
     if (empty($arr)) {

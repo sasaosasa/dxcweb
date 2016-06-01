@@ -28,18 +28,18 @@ class Http
             "操作名称：" . $operation_name . "\n" .
             "错误：" . $msg . "\n" .
             "内容：" . $content;
-        self::post($wxqy_base_fx . "service/send-text/to-all", $data, [], false);
+        self::post($wxqy_base_fx . "service/send-text/to-all", $data, [], [], false);
         return true;
     }
 
-    public static function get($url, $params = [], $error_notice = true)
+    public static function get($url, $params = [], $headers = [], $error_notice = true)
     {
         if (!empty($params)) {
             $url = $url . '?' . http_build_query($params);
         }
-        $return = self::curl($url, 'GET');
-        if ($return['httpCode'] != 200) {
-            log_file("error/get", "GET非200", ["url" => $url, "params" => $params], $return['httpCode'], $return['response']);
+        $return = self::curl($url, 'GET', null, $headers);
+        if ($return['httpCode'] != 200 && $return['httpCode'] != 201) {
+            log_file("error/get", "GET非200", ["url" => $url, "params" => $params, "headers" => $headers], $return['httpCode'], $return['response']);
             if ($error_notice) {
                 self::notice("error/get", "GET非200", "url：$url", "httpCode:{$return['httpCode']}");
             }
@@ -48,26 +48,29 @@ class Http
         return _output($return["response"]);
     }
 
-    public static function post($url, $params = [], $files = [], $error_notice = true)
+    public static function post($url, $params = [], $files = [], $headers = [], $error_notice = true)
     {
-        $headers = array();
         if (!$files) {
-            $body = http_build_query($params);
+            if (is_array($params)) {
+                $body = http_build_query($params);
+            } else {
+                $body = $params;
+            }
         } else {
             $body_res = self::build_http_query_multi($params, $files);
             if (!$body_res['result']) {
                 if ($error_notice) {
-                    log_file("error/post", "build_http_query_multi", ["url" => $url, "params" => $params, "files" => $files], $body_res['data']);
+                    log_file("error/post", "build_http_query_multi", ["url" => $url, "params" => $params, "files" => $files, "headers" => $headers], $body_res['data']);
                     self::notice("error/post", "build_http_query_multi", $body_res['data']);
                 }
                 return $body_res;
             }
             $body = $body_res['data'];
-            $headers[] = "Content-Type: multipart/form-data; boundary=" . self::$boundary;
+            $headers['Content-Type'] = "multipart/form-data; boundary=" . self::$boundary;
         }
         $return = self::curl($url, 'POST', $body, $headers);
-        if ($return['httpCode'] != 200) {
-            log_file("error/post", "POST非200", ["url" => $url, "params" => $params, "files" => $files], $return['httpCode'], $return['response']);
+        if ($return['httpCode'] != 200 && $return['httpCode'] != 201) {
+            log_file("error/post", "POST非200", ["url" => $url, "params" => $params, "files" => $files, "headers" => $headers], $return['httpCode'], $return['response']);
             if ($error_notice) {
                 self::notice("error/post", "POST非200", "url：$url", "httpCode:{$return['httpCode']}");
             }
@@ -76,16 +79,38 @@ class Http
         return _output($return["response"]);
     }
 
-
-    public static function curl($url, $method, $postfields = NULL, $headers = array())
+    public static function put($url, $body = "", $headers = [], $error_notice = true)
     {
+        $return = self::curl($url, 'PUT', $body, $headers);
+        if ($return['httpCode'] != 200 && $return['httpCode'] != 201) {
+            log_file("error/post", "POST非200", ["url" => $url, "body" => $body, "headers" => $headers], $return['httpCode'], $return['response']);
+            if ($error_notice) {
+                self::notice("error/post", "POST非200", "url：$url", "httpCode:{$return['httpCode']}");
+            }
+            return _output($return, false);
+        }
+        return _output($return["response"]);
+    }
+
+    private static function curl($url, $method, $postfields = NULL, $headers = [])
+    {
+        $default_headers = [
+            "Expect" => '',
+            "Content-Type" => 'text/xml',
+        ];
+        $headers = array_merge($default_headers, $headers);
+        $header_arr = [];
+        foreach ($headers as $key => $val) {
+            $header_arr[] = $key . ":" . $val;
+        }
+
         $ci = curl_init();
-        curl_setopt($ci, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
+        curl_setopt($ci, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
         curl_setopt($ci, CURLOPT_CONNECTTIMEOUT, 30);
         curl_setopt($ci, CURLOPT_TIMEOUT, 30);//设置超时
         curl_setopt($ci, CURLOPT_RETURNTRANSFER, TRUE);//要求结果为字符串且输出到屏幕上
         curl_setopt($ci, CURLOPT_ENCODING, "");
-        curl_setopt($ci, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ci, CURLOPT_SSL_VERIFYPEER, true);
         curl_setopt($ci, CURLOPT_SSL_VERIFYHOST, 0);
         //curl_setopt($ci, CURLOPT_HEADERFUNCTION, array($this, 'getHeader'));
         curl_setopt($ci, CURLOPT_HEADER, FALSE);//设置header
@@ -97,10 +122,16 @@ class Http
                     curl_setopt($ci, CURLOPT_POSTFIELDS, $postfields);
                 }
                 break;
+            case 'PUT':
+                curl_setopt($ci, CURLOPT_CUSTOMREQUEST, 'PUT');
+                if (!empty($postfields)) {
+                    curl_setopt($ci, CURLOPT_POSTFIELDS, $postfields);
+                }
+                break;
         }
 
         curl_setopt($ci, CURLOPT_URL, $url);
-        curl_setopt($ci, CURLOPT_HTTPHEADER, $headers);
+        curl_setopt($ci, CURLOPT_HTTPHEADER, $header_arr);
         curl_setopt($ci, CURLINFO_HEADER_OUT, TRUE);
 
         $response = curl_exec($ci);
