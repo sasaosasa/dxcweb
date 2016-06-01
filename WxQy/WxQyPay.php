@@ -8,7 +8,7 @@
 
 namespace Tool\WxQy;
 use Tool\DB;
-class WxQyPay extends WxQYUtil
+class WxQyPay extends WxQyUtil
 {
     public function unifiedOrder($data)
     {
