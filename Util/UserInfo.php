@@ -21,10 +21,8 @@ class UserInfo
         }
         $session_id_key = self::getSessionIdKey($user_id);
         $session_id = Redis::get($session_id_key);
-        if(!empty($session_id))
-        {
+        if (!empty($session_id)) {
             self::getUserIdKey($session_id);
-            Redis::del($session_id);
             $user_info_key = self::getUserInfoKey($session_id);
             Redis::del($user_info_key);
             $get_user_id_key = self::getUserIdKey($session_id);
@@ -33,9 +31,15 @@ class UserInfo
         }
     }
 
-    static public function getUserInfo()
+    static public function getUserInfo($user_id = null)
     {
-        $user_info_key = self::getUserInfoKey();
+        if (empty($user_id)) {
+            $user_info_key = self::getUserInfoKey();
+        } else {
+            $session_id_key = self::getSessionIdKey($user_id);
+            $session_id = Redis::get($session_id_key);
+            $user_info_key = self::getUserInfoKey($session_id);
+        }
         return json_decode(Redis::get($user_info_key), true);
     }
 
@@ -45,13 +49,14 @@ class UserInfo
         return Redis::get($user_id);
     }
 
-    static public function setUserInfo($user_id, $user_info = [])
+    static public function setUserInfo($user_id, $user_info = [], $session_id = null)
     {
         self::delUserInfo($user_id);
-        $user_info_key = self::getUserInfoKey();
+        $user_info_key = self::getUserInfoKey($session_id);
         Redis::setex($user_info_key, 86400, json_encode($user_info));
         $session_id_key = self::getSessionIdKey($user_id);
-        $session_id = Session::getId();
+        if (empty($session_id))
+            $session_id = Session::getId();
         Redis::setex($session_id_key, 86400, $session_id);
         $get_user_id_key = self::getUserIdKey();
         Redis::setex($get_user_id_key, 86400, $user_id);
@@ -75,7 +80,7 @@ class UserInfo
         return md5($session_prefix . '_' . $session_id . '_user_id');
     }
 
-    static private function getSessionIdKey($user_id)
+    static public function getSessionIdKey($user_id)
     {
         $session_prefix = config('myapp.session_prefix');
         return md5($session_prefix . '_' . $user_id . '_user_id');

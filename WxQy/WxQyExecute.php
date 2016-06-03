@@ -8,9 +8,7 @@
 
 namespace Tool\WxQy;
 
-
-
-use Symfony\Component\HttpKernel\DataCollector\DumpDataCollector;
+use Tool\Util\Http;
 
 class  WxQyExecute extends WxQyToken
 {
@@ -19,13 +17,15 @@ class  WxQyExecute extends WxQyToken
         $res = $this->execute_return($uri, $data);
         if (!$res['result']) {
             $error = $res['msg'];
-            error_to_db($type, $data, $error, "URL:".$uri);
+            error_to_db($type, $data, $error, "URL:" . $uri);
+            Http::notice("DB", "同步报错！", json_encode_cn($error));
             _pack($type . "错误。请管理员查看日志！" . json_encode_cn($error), false);
             return false;
         } else {
             return $res['data'];
         }
     }
+
     /**
      * 执行返回
      */
