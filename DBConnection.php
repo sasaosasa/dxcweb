@@ -177,6 +177,21 @@ class DBConnection
         }
     }
 
+    public function max($columns)
+    {
+        $data = $this->connection->max($columns);
+        $this->connection = $this->facadeRoot->connection($this->connection_name);
+        $this->table($this->table);
+        return $data;
+    }
+    public function min($columns)
+    {
+        $data = $this->connection->min($columns);
+        $this->connection = $this->facadeRoot->connection($this->connection_name);
+        $this->table($this->table);
+        return $data;
+    }
+
     public function join($table, $one, $operator = null, $two = null, $type = 'inner', $where = false)
     {
         $this->connection = $this->connection->join($table, $one, $operator, $two, $type = 'inner', $where);
