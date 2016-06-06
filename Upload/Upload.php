@@ -18,7 +18,7 @@ class Upload
     private $config = array(
         'mimes' => array(), //允许上传的文件MiMe类型
         'maxSize' => 0, //上传的文件大小限制 (0-不做限制)
-        'exts' => array(), //允许上传的文件后缀
+        'exts' =>['jpg','png','jpeg'], //允许上传的文件后缀
         'autoSub' => true, //自动子目录保存文件
         'subName' => array('date', 'Y-m-d'), //子目录创建方式，[0]-函数名，[1]-参数，多个参数使用数组
 //        'rootPath' => './php/uploads/', //保存根路径
@@ -28,7 +28,7 @@ class Upload
         'replace' => false, //存在同名是否覆盖
         'hash' => true, //是否生成hash编码
         'callback' => false, //检测文件是否存在回调，如果存在返回文件信息数组
-        'driver' => '', // 文件上传驱动
+        'driver' => 'Oss', // 文件上传驱动
         'driverConfig' => array(), // 上传驱动配置
     );
 
@@ -49,12 +49,14 @@ class Upload
      * @param array $config 配置
      * @param string $driver 要使用的上传驱动 LOCAL-本地上传驱动，FTP-FTP上传驱动
      */
-    public function __construct($config = array(), $driver = '', $driverConfig = null)
+    public function __construct($config = array())
     {
         /* 获取配置 */
         $this->config = array_merge($this->config, $config);
 
         /* 设置上传驱动 */
+        $driver=$this->config["driver"];
+        $driverConfig=$this->config["driverConfig"];
 
         $this->setDriver($driver, $driverConfig);
 

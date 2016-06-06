@@ -265,6 +265,18 @@ class DBConnection
         }
         return $this;
     }
+    public function extjs2()
+    {
+        if (isset($_GET['page']) && $_GET['limit'])
+            $this->page($_GET['page'], $_GET['limit']);
+        if (isset($_GET['sort'])) {
+            $sort = json_decode($_GET['sort'], true);
+            if (isset($sort[0]['property']) && isset($sort[0]['direction'])) {
+                $this->orderBy($sort[0]['property'], $sort[0]['direction']);
+            }
+        }
+        return $this;
+    }
 
     public function increment($key, $val)
     {
