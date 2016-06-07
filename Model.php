@@ -206,13 +206,13 @@ class Model
                 if ($this->is_exists_primary_key($val)) {
                     $new_data = $this->assemblyUpdateData($val);
                     $new_data_arr[] = $new_data;
-
                     //初始化插入更新
                     $this->initUpdateData($new_data);
                 } else {
                     //初始化插入数据
                     $new_data = $this->assemblyInsertData($val);
-                    $this->initInsertData($new_data);
+                    if (!empty($new_data))
+                        $this->initInsertData($new_data);
                 }
             }
             //初始化要删除的数据
@@ -227,6 +227,7 @@ class Model
                 if (empty($this->db_data)) {
                     //组织数据,过滤不需要的字段
                     $new_data = $this->assemblyInsertData($original_data);
+
                     $this->initInsertData($new_data);
                 } else {
                     //组织数据,过滤不需要的字段
@@ -260,7 +261,7 @@ class Model
                     $data['created_at'] = _now();
                 }
                 if ($this->is_create_id) {
-                    $data['create_id'] = _userID();
+                    $data['create_id'] = _erpUserInfo()['emp_id'];
                 }
 
                 if (!empty($this->foreign_key_val)) {
@@ -285,13 +286,11 @@ class Model
      */
     private function initUpdateData($data)
     {
-
         if ($this->is_update) {
             $data = $this->setForeignKeyVal($data);
             $data = $this->setRedundantData($data);
             foreach ($this->db_data as $val) {
                 if ($this->is_equal_primary_key($val, $data)) {
-
                     $change = $this->contrastData($val, $data);
                     if (!empty($change)) {
                         if (!$this->initUpdateDataCB($change, $val)) {
@@ -396,14 +395,13 @@ class Model
     {
         $change = [];
         foreach ($db_data as $key => $val) {
-            if (!isset($data[$key])) {
+            if (!array_key_exists($key, $data)) {
                 continue;
             }
-            if ($val != $data[$key]) {
+            if ($val !== $data[$key]) {
                 $change[$key] = $data[$key];
             }
         }
-
         return $change;
     }
 
@@ -485,10 +483,14 @@ class Model
     {
         $new_data = [];
         foreach ($this->fields as $val) {
-            if (isset($original_data[$val]))
-                $new_data[$val] = $original_data[$val];
+            if (array_key_exists($val, $original_data)) {
+                if ($original_data[$val] === '') {
+                    $new_data[$val] = null;
+                } else {
+                    $new_data[$val] = $original_data[$val];
+                }
+            }
         }
-
         return $new_data;
     }
 
@@ -499,8 +501,10 @@ class Model
     {
         $new_data = [];
         foreach ($this->fields as $val) {
-            if (isset($original_data[$val]) && $original_data[$val] != '')
+            if (isset($original_data[$val]) && $original_data[$val] !== '')
                 $new_data[$val] = $original_data[$val];
+            else
+                $new_data[$val] = null;
         }
         return $new_data;
     }
