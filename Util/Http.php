@@ -1,6 +1,8 @@
 <?php
 namespace Tool\Util;
 
+use phpseclib\Crypt\RSA;
+
 class Http
 {
     private static $boundary = '';
@@ -67,9 +69,9 @@ class Http
         if (empty($http_params['sign'])) {
             return _output("生成签名错误,请检测私钥密码是否正确！", false);
         }
-        return self::post($url, $http_params, [], $error_notice);
+        return self::post($url, $http_params, [], [], $error_notice);
     }
-    
+
     public static function post($url, $params = [], $files = [], $headers = [], $error_notice = true)
     {
         if (!$files) {
@@ -117,8 +119,7 @@ class Http
     private static function curl($url, $method, $postfields = NULL, $headers = [])
     {
         $default_headers = [
-            "Expect" => '',
-            "Content-Type" => 'text/xml',
+            "Expect" => ''
         ];
         $headers = array_merge($default_headers, $headers);
         $header_arr = [];
