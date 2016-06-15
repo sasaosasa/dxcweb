@@ -35,7 +35,7 @@ class  WxQyExecute extends WxQyToken
         $res = $this->curl($url, $this->json_encode_cn($data));
         $check_data = $this->checkData($res);
         if ($check_data['result']) {
-            log_file("log/wx/execute_return", "执行返回", $data, $check_data['data'], $uri, "成功！");
+            log_file("log/wxqy/execute_return", "执行返回", $data, $check_data['data'], $uri, "成功！");
             return $check_data;
         } else {
             if ($reload) {
@@ -45,7 +45,7 @@ class  WxQyExecute extends WxQyToken
                 } else {
                     $content = "重发后失败！";
                 }
-                log_file("error/wx/execute_return", "执行返回", $data, $check_data['data'], $uri, $content);
+                log_file("error/wxqy/execute_return", "执行返回", $data, $check_data['data'], $uri, $content);
                 return $check_data;
             } else {
                 //不是重发的
@@ -54,7 +54,7 @@ class  WxQyExecute extends WxQyToken
                     return $this->execute_return($uri, $data, true);
                 } else {
                     //有错误！！！
-                    log_file("error/wx/execute_return", "执行返回", $data, $check_data['data'], $uri, "失败！");
+                    log_file("error/wxqy/execute_return", "执行返回", $data, $check_data['data'], $uri, "失败！");
                     return $check_data;
                 }
             }

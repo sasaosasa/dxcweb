@@ -58,7 +58,7 @@ class UserInfo
         if (empty($session_id))
             $session_id = Session::getId();
         Redis::setex($session_id_key, 86400, $session_id);
-        $get_user_id_key = self::getUserIdKey();
+        $get_user_id_key = self::getUserIdKey($session_id);
         Redis::setex($get_user_id_key, 86400, $user_id);
     }
 

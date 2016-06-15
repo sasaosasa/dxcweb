@@ -9,18 +9,54 @@
 namespace Tool\WxQy;
 
 
-class WxQyPayUtil extends WxQyUtil
+class WxQyPayUtil extends WxQyExecute
 {
     public $mchId;
+    protected $payKey;
 
     public function __construct()
     {
-        $mchId = config('myapp.mchId');
-        if (empty($mchId)) {
+        $this->mchId = config('myapp.mchId');
+        if (empty($this->mchId)) {
             _pack("缺少mchId配置！", false);
         }
-        $this->mchId = config('myapp.mchId');
+        $this->payKey = config('myapp.payKey');
+        if (empty($this->payKey)) {
+            _pack("缺少payKey配置！", false);
+        }
         parent::__construct();
+    }
+
+    /**
+     *    作用：生成签名
+     */
+    public function getSign($arr)
+    {
+        //签名步骤一：按字典序排序参数
+        ksort($arr);
+        $string = $this->ToUrlParams($arr);
+        //签名步骤二：在string后加入KEY
+        $string = $string . "&key=" . $this->payKey;
+        //签名步骤三：MD5加密
+        $string = md5($string);
+        //签名步骤四：所有字符转为大写
+        $result = strtoupper($string);
+        return $result;
+    }
+
+    /**
+     * 格式化参数格式化成url参数
+     */
+    public function ToUrlParams($arr)
+    {
+        $buff = "";
+        foreach ($arr as $k => $v) {
+            if ($k != "sign" && $v != "" && !is_array($v)) {
+                $buff .= $k . "=" . $v . "&";
+            }
+        }
+        $buff = trim($buff, "&");
+        return $buff;
     }
 
     /**
@@ -35,13 +71,12 @@ class WxQyPayUtil extends WxQyUtil
     /**
      * userid转换成openid接口
      */
-    public function getOpenid($user_id,$agent_id)
+    public function getOpenid($user_id, $agent_id)
     {
-        $data['userid']=$user_id;
-        $data['agentid']=$agent_id;
-        $url="https://qyapi.weixin.qq.com/cgi-bin/user/convert_to_openid?access_token=ACCESS_TOKEN";
-        $res=$this->execute($url,"userid转换成openid接口",$data);
+        $data['userid'] = $user_id;
+        $data['agentid'] = $agent_id;
+        $url = "https://qyapi.weixin.qq.com/cgi-bin/user/convert_to_openid?access_token=ACCESS_TOKEN";
+        $res = $this->execute_return($url, $data);
         return $res;
-
     }
 }

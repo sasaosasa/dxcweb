@@ -23,6 +23,9 @@ class Http
         if (empty($data['agent_id'])) {
             return false;
         }
+        if (!is_string($msg)) {
+            $msg = json_encode_cn($msg);
+        }
         $data['content'] =
             "项目：" . config('myapp.app_name') . "\n" .
             "环境：" . config('myapp.env') . "\n" .
@@ -30,8 +33,8 @@ class Http
             "操作名称：" . $operation_name . "\n" .
             "错误：" . $msg . "\n" .
             "内容：" . $content;
-        self::post($wxqy_base_fx . "service/send-text/to-all", $data, [], [], false);
-        return true;
+        $res = self::post($wxqy_base_fx . "service/send-text/to-all", $data, [], [], false);
+        return $res;
     }
 
     public static function get($url, $params = [], $headers = [], $error_notice = true)
