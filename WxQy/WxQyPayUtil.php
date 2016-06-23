@@ -71,10 +71,11 @@ class WxQyPayUtil extends WxQyExecute
     /**
      * userid转换成openid接口
      */
-    public function getOpenid($user_id, $agent_id)
+    public function getOpenid($user_id, $agent_id = null)
     {
         $data['userid'] = $user_id;
-        $data['agentid'] = $agent_id;
+        if (!empty($agent_id))
+            $data['agentid'] = $agent_id;
         $url = "https://qyapi.weixin.qq.com/cgi-bin/user/convert_to_openid?access_token=ACCESS_TOKEN";
         $res = $this->execute_return($url, $data);
         return $res;

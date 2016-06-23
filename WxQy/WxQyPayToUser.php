@@ -31,7 +31,7 @@ class WxQyPayToUser extends WxQyPayUtil
         $request['mchid'] = $this->mchId;
         $request['nonce_str'] = $this->createRandStr();
         $request['partner_trade_no'] = create_guid();
-        $request['spbill_create_ip'] = '127.0.0.1';
+        $request['spbill_create_ip'] = '127.0.0.1';//支付IP白名单未开启。
         $request['sign'] = $this->getSign($request);
         return $this->_payCurl($request);
     }
@@ -44,28 +44,32 @@ class WxQyPayToUser extends WxQyPayUtil
         if ($res_arr['return_code'] != 'SUCCESS') {
             log_file("error/wxqy/pay_to_user", "请求错误！", $xml, $res, "失败");
             return _output($res, false);
-        } else if ($res_arr['result_code'] != 'SUCCESS') {
-            if ($res_arr['err_code'] == 'SYSTEMERROR' && $retry) {
-                $this->_payCurl($xml, false);
-            }
-            if ($res_arr['err_code'] == 'NAME_MISMATCH') {
-                $res_arr['return_msg'] = "微信认证的姓名与系统中的姓名不一致，无法转账。";
-            }
-            if ($res_arr['err_code'] == 'NOTENOUGH') {
-                $res_arr['return_msg'] = "余额不足，请先充值！";
-            }
-            if ($res_arr['err_code'] == 'FREQ_LIMIT') {
-                $res_arr['return_msg'] = "对同一个用户的转账过于频繁，请稍后重试。";
-            }
-            if ($res_arr['err_code'] == 'SENDNUM_LIMIT') {
-                $res_arr['return_msg'] = "对此用户的转账次数已达上限，请明天再转。";
+        }
+        if ($res_arr['result_code'] != 'SUCCESS') {
+            switch ($res_arr['err_code']) {
+                case 'SYSTEMERROR':
+                    if ($retry)
+                        return $this->_payCurl($xml, false);
+                    break;
+                case 'NAME_MISMATCH':
+                    $res_arr['return_msg'] = "微信认证的姓名与系统中的姓名不一致，无法转账。";
+                    break;
+                case 'NOTENOUGH':
+                    $res_arr['return_msg'] = "余额不足，请先充值！";
+                    break;
+                case 'FREQ_LIMIT':
+                    $res_arr['return_msg'] = "对同一个用户的转账过于频繁，请稍后重试。";
+                    break;
+                case 'SENDNUM_LIMIT':
+                    $res_arr['return_msg'] = "对此用户的转账次数已达上限，请明天再转。";
+                    break;
             }
             return _output($res_arr['return_msg'], false, $res_arr['err_code']);
-        } else {
-            $data['payment_no'] = $res_arr['payment_no'];
-            $data['partner_trade_no'] = $res_arr['partner_trade_no'];
-            return _output($data);
         }
+        $data['payment_no'] = $res_arr['payment_no'];
+        $data['partner_trade_no'] = $res_arr['partner_trade_no'];
+        $data['payment_time'] = strtotime($res_arr['payment_time']);
+        return _output($data);
     }
 
     private function checkPayToUserData($data)
@@ -74,8 +78,11 @@ class WxQyPayToUser extends WxQyPayUtil
         if (empty($data['emp_id'])) {
             return _output("缺少员工ID", false);
         }
-        $res = $this->getOpenid($data['emp_id'],0);
+        $res = $this->getOpenid($data['emp_id'], 0);
         if (!$res['result']) {
+            if ($res['errorcode'] == '43004') {
+                $res['data'] = "该用户没有关注企业号,无法转账！";
+            }
             return $res;
         }
         $request['openid'] = $res['data']['openid'];
@@ -94,7 +101,7 @@ class WxQyPayToUser extends WxQyPayUtil
         if (empty($data['amount'])) {
             return _output("缺少企业付款金额", false);
         } else {
-            $request['amount'] = bcmul($data['amount'], 100);
+            $request['amount'] = bcmul($data['amount'], 100);//微信单位为分。wxqy_base单位为元
         }
         if (empty($data['describe'])) {
             return _output("缺少企业付款描述信息", false);

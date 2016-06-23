@@ -470,11 +470,11 @@ function print_stack_trace()
 
 function notice($content = "错误！请查看日志！")
 {
-    $wxqy_base_fx = config("myapp.wxqy_base_fx");
+    $wxqy_notice = config("myapp.wxqy_notice");
     $wx = new \Tool\Wx\WxBasic();
     $data['agent_id'] = config("myapp.error_notice_agent_id");
     $data['content'] = "环境：" . config('myapp.env') . "\n" . $content;
-    $wx->curl($wxqy_base_fx . "service/send-text/to-all", $data);
+    $wx->curl($wxqy_notice . "service/send-text/to-all", $data);
 }
 
 function str_replace_once($needle, $replace, $haystack)

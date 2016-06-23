@@ -15,8 +15,8 @@ class Http
         if (!is_string($content)) {
             return false;
         }
-        $wxqy_base_fx = config("myapp.wxqy_base_fx");
-        if (empty($wxqy_base_fx)) {
+        $wxqy_notice = config("myapp.wxqy_notice");
+        if (empty($wxqy_notice)) {
             return false;
         }
         $data['agent_id'] = config("myapp.error_notice_agent_id");
@@ -33,7 +33,7 @@ class Http
             "操作名称：" . $operation_name . "\n" .
             "错误：" . $msg . "\n" .
             "内容：" . $content;
-        $res = self::post($wxqy_base_fx . "service/send-text/to-all", $data, [], [], false);
+        $res = self::post($wxqy_notice . "service/send-text/to-all", $data, [], [], false);
         return $res;
     }
 

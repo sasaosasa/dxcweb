@@ -7,81 +7,97 @@
  */
 
 namespace Tool\WxQy;
-use Tool\DB;
-class WxQyPay extends WxQyUtil
+
+class WxQyPay extends WxQyPayUtil
 {
+    //统一订单
     public function unifiedOrder($data)
     {
-        $data['appid']=config("myapp.corpId");
-        $data['mch_id']=config("myapp.mchId");
-        $data['spbill_create_ip']=$_SERVER['REMOTE_ADDR'];
-        $data['nonce_str']=$this->createRandStr();
-        $data['sign']=$this->getSign($data);
-        $xml=$this->arrayToXml($data);
-        $url = "https://api.mch.weixin.qq.com/pay/unifiedorder";
-        $res=$this->payCurl($xml,$url);
-        $data=$this->xmlToArray($res);
-        return $data;
-    }
-    public function getJsApiParameters($order)
-    {
-        if (!array_key_exists("appid", $order)
-            || !array_key_exists("prepay_id", $order)
-            || $order['prepay_id'] == ""
-        ) {
-            return false;
+        $res = $this->checkOrderData($data);
+        if (!$res['result']) {
+            return $res;
         }
-        $data=[];
-        $timeStamp = time();
-        $data['appId']=$order['appid'];
-        $data['timeStamp']="$timeStamp";
-        $data['nonceStr']=$this->createRandStr();
-        $data['package']="prepay_id=" . $order['prepay_id'];
-        $data['signType']="MD5";
-        $data['paySign']=$this->getSign($data);
-        return $data;
-    }
-    public function notify()
-    {
-        $res = isset($GLOBALS["HTTP_RAW_POST_DATA"]) ? $GLOBALS["HTTP_RAW_POST_DATA"] : file_get_contents('php://input', 'r');
-        $data = $this->xmlToArray($res);
-        $arr = [];
-        $sign = $this->checkSign($data);
-        if ($sign == FALSE) {
-            $arr['return_code'] = 'FAIL';//返回状态码
-            $arr['return_msg'] = '签名失败';//返回信息
+        $data = array_merge($this->orderBaseData(), $res['data']);
+        $data['sign'] = $this->getSign($data);
+        $xml = $this->arrayToXml($data);
+        $res = $this->curl('https://api.mch.weixin.qq.com/pay/unifiedorder', $xml);
+        $res_arr = $this->xmlToArray($res);
+        if ($res_arr['return_code'] != 'SUCCESS') {
+            log_file('error/wxqy/unifiedOrder', "统一订单", $data, $res_arr);
+            return _output($res_arr['return_msg'], false);
         } else {
-            $arr['return_code'] = 'SUCCESS';//设置返回码
+            log_file('log/wxqy/unifiedOrder', "统一订单", $data, $res_arr);
+            $res_arr['out_trade_no'] = $data['out_trade_no'];
+            $res_arr['openid'] = $data['openid'];
+            return _output($res_arr);
         }
-        $returnXml = $this->arrayToXml($arr);
-        echo $returnXml;
-        $data['status']='FAIL';
-        if ($sign == TRUE) {
-            if ($data["return_code"] == "FAIL") {
-                $data['type'] = '【通信出错】';
-            } elseif ($data["result_code"] == "FAIL") {
-                $data['type'] = '【业务出错】';
-            } else {
-                $data['type'] = '【支付成功】';
-                $data['status']='SUCCESS';
-            }
-        } else {
-            exit;
-        }
-        return $data;
     }
-    public function refund($data)
+
+    //获取JS签名包
+    public function getJsPaySignPackage($prepay_id)
     {
-        $data['out_refund_no'] = uniqid('refund-');
-        $data['op_user_id'] = config("myapp.mchId");
-        $data['appid'] = config("myapp.corpId");
-        $data['mch_id']=config("myapp.mchId");
-        $data['nonce_str']=$this->createRandStr();
-        $data['sign']=$this->getSign($data);
-        $xml=$this->arrayToXml($data);
-        $url = "https://api.mch.weixin.qq.com/secapi/pay/refund";
-        $res=$this->payCurl($xml,$url);
-        $data=$this->xmlToArray($res);
+        $sign_package = [];
+        $sign_package['appId'] = $this->corp_id;
+        $time = _now();
+        $sign_package['timeStamp'] = "$time";
+        $sign_package['nonceStr'] = $this->createRandStr();
+        $sign_package['package'] = "prepay_id=" . $prepay_id;
+        $sign_package['signType'] = 'MD5';
+        $sign_package['paySign'] = $this->getSign($sign_package);
+        $sign_package['timestamp'] = $sign_package['timeStamp'];
+        unset($sign_package['appId']);
+        unset($sign_package['timeStamp']);
+        return $sign_package;
+    }
+
+    private function checkOrderData($data)
+    {
+        if (empty($data['body'])) {
+            return _output("缺少，商品或支付单简要描述body", false);
+        }
+        if (!stringLengthCheck($data['body'], 128)) {
+            return _output("超长，商品或支付单简要描述body", false);
+        }
+        if (empty($data['total_fee'])) {
+            return _output("缺少，订单总金额total_fee", false);
+        }
+        if (empty($data['trade_type'])) {
+            return _output("缺少，交易类型trade_type,[JSAPI，NATIVE，APP]", false);
+        }
+        if (empty($data['notify_url'])) {
+            return _output("缺少，回调地址notify_url", false);
+        }
+        if (empty($data['emp_id'])) {
+            return _output("缺少，emp_id", false);
+        }
+        if (empty($data['attach'])) {
+            $data['attach'] = "";
+        }
+        $user = $this->getOpenid($data['emp_id']);
+        if (!$user['result']) {
+            return $user;
+        }
+        $res = [];
+        $res['openid'] = $user['data']['openid'];
+        $res['appid'] = $this->corp_id;
+        $res['notify_url'] = $data['notify_url'];
+        $res['trade_type'] = $data['trade_type'];
+        $res['body'] = $data['body'];
+        $res['attach'] = $data['attach'];
+        $res['total_fee'] = $data['total_fee'] * 100;
+        return _output($res);
+    }
+
+    private function orderBaseData()
+    {
+        $data['mch_id'] = $this->mchId;
+        $data['device_info'] = 'web';
+        $data['nonce_str'] = $this->createRandStr();
+        $data['out_trade_no'] = $this->createRandStr();
+        $data['fee_type'] = 'CNY';
+        $data['spbill_create_ip'] = '127.0.0.1';
+        $data['time_start'] = date("YmdHis");
+        $data['time_expire'] = date("YmdHis", time() + 600);
         return $data;
     }
 }
