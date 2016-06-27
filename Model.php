@@ -11,8 +11,7 @@ namespace Tool;
 
 class Model
 {
-    public $is_create_id = true;//是否要加创建人ID
-    public $is_created_at = true;
+
     public $change_records = [];
     public $is_insert = true;
     public $is_update = true;
@@ -257,13 +256,12 @@ class Model
         if ($this->is_insert) {
             if ($this->initInsertDataCB($data)) {
                 $this->insert_data[] = $data;
-                if ($this->is_created_at) {
+                if (in_array('created_at', $this->fields)) {
                     $data['created_at'] = _now();
                 }
-                if ($this->is_create_id) {
+                if (in_array('create_id', $this->fields)) {
                     $data['create_id'] = _erpUserInfo()['emp_id'];
                 }
-
                 if (!empty($this->foreign_key_val)) {
                     $data = array_merge($data, $this->foreign_key_val);
                 }
@@ -297,7 +295,8 @@ class Model
                             continue;
                         }
                         $this->update_data[] = $change;
-                        $change['updated_at'] = _now();
+                        if (in_array('updated_at', $this->fields))
+                            $change['updated_at'] = _now();
                         $change = array_merge($this->getPrimaryKey($val), $change);
                         $this->_update_data[] = $change;
                         $this->changeRecords(2, $change, $val);
