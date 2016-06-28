@@ -14,9 +14,13 @@ use Illuminate\Support\Facades\Session;
 
 class UserInfo
 {
-    static public function getMyInfo()
+    static public function getMyInfo($user_info = null)
     {
         static $my_info;
+        if (!empty($user_info)) {
+            $my_info = $user_info;
+            return true;
+        }
         if (!empty($my_info)) {
             return $my_info;
         }
