@@ -25,18 +25,19 @@ class Model
     protected $fields;
     protected $redundant;//冗余字段
     protected $redundant_data;//冗余字段数据,插入或更新时原始数据不存在的时候加上
-
+    protected $original_data;
+    
     private $db;
     private $update_data;
     private $insert_data;
     private $delete_data;
 
     //多创建时间，更新时间，删除时间，创建人。
-    private $_update_data;
-    private $_insert_data;
-    private $_delete_data1;//单主键。whereIN删
-    private $_delete_data2;//多主键.单条删除
-    private $db_data;//数据库数据
+    protected $_update_data;
+    protected $_insert_data;
+    protected $_delete_data1;//单主键。whereIN删
+    protected $_delete_data2;//多主键.单条删除
+    protected $db_data;//数据库数据
 
 
     protected $auto_increment = true;//自增
@@ -84,6 +85,7 @@ class Model
     {
         $this->foreign_key_val = $foreign_key_val;
         $this->redundant_data = $redundant_data;
+        $this->original_data = $original_data;
         $this->clearsData();
         $this->init_data($original_data);
         $this->run();
@@ -218,11 +220,9 @@ class Model
             $this->initDeleteData($new_data_arr);
         } else {
             //单条数据
-
             if ($this->is_exists_primary_key($original_data)) {
                 //通过主键查询
                 $this->queryByPrimaryKey($original_data);
-
                 if (empty($this->db_data)) {
                     //组织数据,过滤不需要的字段
                     $new_data = $this->assemblyInsertData($original_data);
@@ -397,6 +397,12 @@ class Model
             if (!array_key_exists($key, $data)) {
                 continue;
             }
+            if ($val != null) {
+                $val = strval($val);
+            }
+            if ($data[$key] != null) {
+                $data[$key] = strval($data[$key]);
+            }
             if ($val !== $data[$key]) {
                 $change[$key] = $data[$key];
             }
@@ -408,7 +414,7 @@ class Model
     /**
      * 插入数据
      */
-    private function insertData()
+    protected function insertData()
     {
         if (empty($this->_insert_data)) {
             return true;
@@ -419,7 +425,7 @@ class Model
     /**
      * 更新数据
      */
-    private function updateData()
+    protected function updateData()
     {
         if (empty($this->_update_data)) {
             return true;
@@ -431,7 +437,7 @@ class Model
         return true;
     }
 
-    private function deleteData()
+    protected function deleteData()
     {
         $db = $this->db;
         if (!empty($this->_delete_data1)) {
